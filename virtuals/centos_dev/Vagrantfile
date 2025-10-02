@@ -1,0 +1,108 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby -*-
+
+# centos_dev VM Configuration
+# Multi-project VM for all Simple Daemons
+
+Vagrant.configure("2") do |config|
+  # VM configuration
+  config.vm.box = "centos/8"
+  config.vm.hostname = "simple-daemons-centos-dev"
+  
+  # Network configuration
+  config.vm.network "private_network", ip: "192.168.1.101"
+  
+  # VM resources
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "simple-daemons-centos-dev"
+    vb.memory = "2048"
+    vb.cpus = 2
+    vb.gui = false
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+    vb.customize ["modifyvm", :id, "--vrde", "off"]
+  end
+  
+  # Provisioning with Ansible
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "../../automation/playbook.yml"
+    ansible.inventory_path = "../../automation/inventory.ini"
+    ansible.limit = "development"
+    ansible.extra_vars = {
+      git_repo_url: ".",
+      git_branch: "main",
+      project_name: ENV['PROJECT_NAME'] || ""
+    }
+    ansible.verbose = true
+  end
+  
+  # Shared directories for development
+  config.vm.synced_folder "../..", "/vagrant", type: "rsync", 
+    rsync__exclude: [".git/", "dist/", "*.o", "*.so", "*.a", "virtuals/", ".vagrant/"]
+  
+  # Project-specific directories (dynamically mounted based on PROJECT_NAME)
+  if ENV['PROJECT_NAME']
+    project_name = ENV['PROJECT_NAME']
+    project_dir = ENV['PROJECT_DIR'] || "../#{project_name}"
+    
+    # Mount the specific project
+    config.vm.synced_folder project_dir, "/opt/simple-daemons/#{project_name}", type: "rsync"
+    
+    # Mount project build directory
+    config.vm.synced_folder "#{project_dir}/build", "/opt/simple-daemons/#{project_name}/build", type: "rsync"
+  end
+  
+  # Post-provisioning script
+  config.vm.provision "shell", inline: <<-SHELL
+    # Create log directories for all daemons
+    sudo mkdir -p /var/log/simple-daemons
+    sudo chown nfsdev:nfsdev /var/log/simple-daemons
+    
+    # Create configuration directory
+    sudo mkdir -p /etc/simple-daemons
+    sudo chown nfsdev:nfsdev /etc/simple-daemons
+    
+    # If PROJECT_NAME is set, set up the specific project
+    if [ -n "" ]; then
+      echo "Setting up project: "
+      
+      # Create project-specific directories
+      sudo mkdir -p /opt/simple-daemons/
+      sudo chown nfsdev:nfsdev /opt/simple-daemons/
+      
+      # Create project-specific log directory
+      sudo mkdir -p /var/log/
+      sudo chown nfsdev:nfsdev /var/log/
+      
+      # Create project-specific config directory
+      sudo mkdir -p /etc/
+      sudo chown nfsdev:nfsdev /etc/
+      
+      # Build the project if it exists
+      if [ -f "/opt/simple-daemons//CMakeLists.txt" ]; then
+        echo "Building ..."
+        cd /opt/simple-daemons/
+        sudo -u nfsdev mkdir -p build
+        cd build
+        sudo -u nfsdev cmake ..
+        sudo -u nfsdev make
+      fi
+    fi
+    
+    # Show status
+    echo "=== Simple Daemons VM Status ==="
+    echo "VM Hostname: BLB-MacBook-Air.local"
+    echo "VM IP: "
+    echo "Project: 'none specified'"
+    echo ""
+    
+    if [ -n "" ]; then
+      echo "===  Status ==="
+      if [ -f "/opt/simple-daemons//build/" ]; then
+        echo "✅  binary found"
+      else
+        echo "❌  binary not found"
+      fi
+    fi
+  SHELL
+end

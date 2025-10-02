@@ -1,0 +1,17 @@
+[Unit]
+Description={{PROJECT_DESCRIPTION}}
+After=network.target
+
+[Service]
+Type=simple
+User={{PROJECT_NAME}}
+Group={{PROJECT_NAME}}
+ExecStart=/usr/local/bin/{{PROJECT_NAME}}
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{PROJECT_NAME}}
+
+[Install]
+WantedBy=multi-user.target

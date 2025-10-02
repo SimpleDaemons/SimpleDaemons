@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  {{PROJECT_NAME}}:
+    image: {{PROJECT_NAME}}:latest
+    container_name: {{PROJECT_NAME}}
+    ports:
+      - "{{DEFAULT_PORT}}:{{DEFAULT_PORT}}/tcp"
+    volumes:
+      - ./config:/etc/{{PROJECT_NAME}}:ro
+      - ./data:/var/lib/{{PROJECT_NAME}}
+      - ./logs:/var/log/{{PROJECT_NAME}}
+    environment:
+      - {{PROJECT_NAME_UPPER}}_CONFIG=/etc/{{PROJECT_NAME}}/{{PROJECT_NAME}}.conf
+      - {{PROJECT_NAME_UPPER}}_LOG_LEVEL=info
+      - {{PROJECT_NAME_UPPER}}_BIND_ADDRESS=0.0.0.0
+      - {{PROJECT_NAME_UPPER}}_BIND_PORT={{DEFAULT_PORT}}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "{{DEFAULT_PORT}}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - {{PROJECT_NAME}}-network
+
+networks:
+  {{PROJECT_NAME}}-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16

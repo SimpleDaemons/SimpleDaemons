@@ -1,0 +1,14 @@
+/var/log/{{PROJECT_NAME}}/*.log {
+    daily
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 644 _{{PROJECT_NAME}} _{{PROJECT_NAME}}
+    postrotate
+        /bin/systemctl reload {{PROJECT_NAME}} > /dev/null 2>&1 || true
+    endscript
+    sharedscripts
+    su _{{PROJECT_NAME}} _{{PROJECT_NAME}}
+}

@@ -1,0 +1,111 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby -*-
+
+# Multi-Project Vagrantfile Template
+# This template can be customized for each VM type
+
+Vagrant.configure("2") do |config|
+  # VM configuration will be set by the parent Vagrantfile
+  # This is a placeholder template for multi-project VMs
+  
+  # Default VM configuration
+  config.vm.box = ENV['VAGRANT_BOX'] || "ubuntu/jammy64"
+  config.vm.hostname = ENV['VM_HOSTNAME'] || "simple-daemons-dev"
+  
+  # Network configuration
+  config.vm.network "private_network", ip: ENV['VM_IP'] || "192.168.1.100"
+  
+  # VM resources
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = ENV['VM_NAME'] || "simple-daemons-dev"
+    vb.memory = ENV['VM_MEMORY'] || "2048"
+    vb.cpus = ENV['VM_CPUS'] || 2
+    vb.gui = false
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+    vb.customize ["modifyvm", :id, "--vrde", "off"]
+  end
+  
+  # Provisioning with Ansible
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "../../automation/playbook.yml"
+    ansible.inventory_path = "../../automation/inventory.ini"
+    ansible.limit = "development"
+    ansible.extra_vars = {
+      git_repo_url: ".",
+      git_branch: "main",
+      project_name: ENV['PROJECT_NAME'] || ""
+    }
+    ansible.verbose = true
+  end
+  
+  # Shared directories for development
+  config.vm.synced_folder "../..", "/vagrant", type: "rsync", 
+    rsync__exclude: [".git/", "dist/", "*.o", "*.so", "*.a", "virtuals/", ".vagrant/"]
+  
+  # Project-specific directories (dynamically mounted based on PROJECT_NAME)
+  if ENV['PROJECT_NAME']
+    project_name = ENV['PROJECT_NAME']
+    project_dir = ENV['PROJECT_DIR'] || "../#{project_name}"
+    
+    # Mount the specific project
+    config.vm.synced_folder project_dir, "/opt/simple-daemons/#{project_name}", type: "rsync"
+    
+    # Mount project build directory
+    config.vm.synced_folder "#{project_dir}/build", "/opt/simple-daemons/#{project_name}/build", type: "rsync"
+  end
+  
+  # Post-provisioning script
+  config.vm.provision "shell", inline: <<-SHELL
+    # Create log directories for all daemons
+    sudo mkdir -p /var/log/simple-daemons
+    sudo chown nfsdev:nfsdev /var/log/simple-daemons
+    
+    # Create configuration directory
+    sudo mkdir -p /etc/simple-daemons
+    sudo chown nfsdev:nfsdev /etc/simple-daemons
+    
+    # If PROJECT_NAME is set, set up the specific project
+    if [ -n "$PROJECT_NAME" ]; then
+      echo "Setting up project: $PROJECT_NAME"
+      
+      # Create project-specific directories
+      sudo mkdir -p /opt/simple-daemons/$PROJECT_NAME
+      sudo chown nfsdev:nfsdev /opt/simple-daemons/$PROJECT_NAME
+      
+      # Create project-specific log directory
+      sudo mkdir -p /var/log/$PROJECT_NAME
+      sudo chown nfsdev:nfsdev /var/log/$PROJECT_NAME
+      
+      # Create project-specific config directory
+      sudo mkdir -p /etc/$PROJECT_NAME
+      sudo chown nfsdev:nfsdev /etc/$PROJECT_NAME
+      
+      # Build the project if it exists
+      if [ -f "/opt/simple-daemons/$PROJECT_NAME/CMakeLists.txt" ]; then
+        echo "Building $PROJECT_NAME..."
+        cd /opt/simple-daemons/$PROJECT_NAME
+        sudo -u nfsdev mkdir -p build
+        cd build
+        sudo -u nfsdev cmake ..
+        sudo -u nfsdev make
+      fi
+    fi
+    
+    # Show status
+    echo "=== Simple Daemons VM Status ==="
+    echo "VM Hostname: $(hostname)"
+    echo "VM IP: $(hostname -I | awk '{print $1}')"
+    echo "Project: ${PROJECT_NAME:-'none specified'}"
+    echo ""
+    
+    if [ -n "$PROJECT_NAME" ]; then
+      echo "=== $PROJECT_NAME Status ==="
+      if [ -f "/opt/simple-daemons/$PROJECT_NAME/build/$PROJECT_NAME" ]; then
+        echo "✅ $PROJECT_NAME binary found"
+      else
+        echo "❌ $PROJECT_NAME binary not found"
+      fi
+    fi
+  SHELL
+end

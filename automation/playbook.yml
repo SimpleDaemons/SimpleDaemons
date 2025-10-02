@@ -1,0 +1,488 @@
+---
+# SimpleDaemons Development Environment Playbook
+# This playbook sets up development environments for all SimpleDaemons projects
+
+- name: SimpleDaemons Development Setup
+  hosts: development
+  become: yes
+  vars:
+    # Development user configuration
+    dev_user: "nfsdev"
+    dev_group: "nfsdev"
+    dev_home: "/home/nfsdev"
+    
+    # Project configuration
+    projects_dir: "/opt/simple-daemons"
+    config_dir: "/etc/simple-daemons"
+    log_dir: "/var/log/simple-daemons"
+    
+    # Build tools
+    build_tools:
+      - build-essential
+      - cmake
+      - make
+      - gcc
+      - g++
+      - pkg-config
+      - git
+      - curl
+      - wget
+      - unzip
+      - rsync
+    
+    # Development dependencies
+    dev_deps:
+      - openssl
+      - libssl-dev
+      - libjsoncpp-dev
+      - libboost-all-dev
+      - libpthread-stubs0-dev
+      - valgrind
+      - gdb
+      - cppcheck
+      - clang-format
+      - clang-tidy
+    
+    # Service management tools
+    service_tools:
+      - systemd
+      - rsyslog
+      - logrotate
+
+  tasks:
+    # Update package cache
+    - name: Update package cache
+      package:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Update package cache (RedHat)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    # Install build tools
+    - name: Install build tools (Debian/Ubuntu)
+      package:
+        name: "{{ build_tools }}"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install build tools (RedHat/CentOS)
+      package:
+        name:
+          - gcc
+          - gcc-c++
+          - make
+          - cmake
+          - pkgconfig
+          - git
+          - curl
+          - wget
+          - unzip
+          - rsync
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # Install development dependencies
+    - name: Install development dependencies (Debian/Ubuntu)
+      package:
+        name: "{{ dev_deps }}"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install development dependencies (RedHat/CentOS)
+      package:
+        name:
+          - openssl
+          - openssl-devel
+          - jsoncpp-devel
+          - boost-devel
+          - valgrind
+          - gdb
+          - cppcheck
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    # Create development user
+    - name: Create development user
+      user:
+        name: "{{ dev_user }}"
+        group: "{{ dev_group }}"
+        home: "{{ dev_home }}"
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    # Create project directories
+    - name: Create project directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ dev_user }}"
+        group: "{{ dev_group }}"
+        mode: '0755'
+      loop:
+        - "{{ projects_dir }}"
+        - "{{ config_dir }}"
+        - "{{ log_dir }}"
+        - "{{ dev_home }}/.local/bin"
+        - "{{ dev_home }}/.local/lib"
+        - "{{ dev_home }}/.local/include"
+
+    # Set up development environment
+    - name: Create .bashrc for development user
+      copy:
+        content: |
+          # SimpleDaemons Development Environment
+          export PATH="$HOME/.local/bin:$PATH"
+          export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"
+          export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH"
+          
+          # Development aliases
+          alias ll='ls -la'
+          alias la='ls -A'
+          alias l='ls -CF'
+          alias ..='cd ..'
+          alias ...='cd ../..'
+          alias grep='grep --color=auto'
+          alias fgrep='fgrep --color=auto'
+          alias egrep='egrep --color=auto'
+          
+          # SimpleDaemons specific
+          alias sd-build='make build'
+          alias sd-test='make test'
+          alias sd-clean='make clean'
+          alias sd-install='make install'
+          alias sd-status='make status'
+          
+          # Function to switch between projects
+          sd-project() {
+            if [ -n "$1" ]; then
+              cd /opt/simple-daemons/$1
+              export PROJECT_NAME=$1
+              echo "Switched to project: $1"
+            else
+              echo "Available projects:"
+              ls -1 /opt/simple-daemons/
+            fi
+          }
+          
+          # Function to build all projects
+          sd-build-all() {
+            for project in /opt/simple-daemons/*/; do
+              if [ -f "$project/Makefile" ]; then
+                echo "Building $(basename $project)..."
+                (cd "$project" && make build)
+              fi
+            done
+          }
+          
+          # Function to test all projects
+          sd-test-all() {
+            for project in /opt/simple-daemons/*/; do
+              if [ -f "$project/Makefile" ]; then
+                echo "Testing $(basename $project)..."
+                (cd "$project" && make test)
+              fi
+            done
+          }
+        dest: "{{ dev_home }}/.bashrc"
+        owner: "{{ dev_user }}"
+        group: "{{ dev_group }}"
+        mode: '0644'
+
+    # Set up Git configuration
+    - name: Configure Git for development user
+      git_config:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        scope: global
+        user: "{{ dev_user }}"
+      loop:
+        - { name: "user.name", value: "SimpleDaemons Developer" }
+        - { name: "user.email", value: "dev@simpledaemons.local" }
+        - { name: "init.defaultBranch", value: "main" }
+        - { name: "pull.rebase", value: "false" }
+
+    # Create project symlinks
+    - name: Create project symlinks
+      file:
+        src: "/vagrant/projects/{{ item }}"
+        dest: "{{ projects_dir }}/{{ item }}"
+        state: link
+        owner: "{{ dev_user }}"
+        group: "{{ dev_group }}"
+      loop:
+        - "simple-dhcpd"
+        - "simple-dnsd"
+        - "simple-dummy"
+        - "simple-httpd"
+        - "simple-nfsd"
+        - "simple-ntpd"
+        - "simple-proxyd"
+        - "simple-rsyncd"
+        - "simple-sftpd"
+        - "simple-smbd"
+        - "simple-smtpd"
+        - "simple-snmpd"
+        - "simple-tftpd"
+        - "simple-utcd"
+      ignore_errors: yes
+
+    # Set up log rotation
+    - name: Configure log rotation for SimpleDaemons
+      copy:
+        content: |
+          /var/log/simple-daemons/*.log {
+              daily
+              missingok
+              rotate 7
+              compress
+              delaycompress
+              notifempty
+              create 644 {{ dev_user }} {{ dev_group }}
+              postrotate
+                  systemctl reload rsyslog > /dev/null 2>&1 || true
+              endscript
+          }
+        dest: /etc/logrotate.d/simple-daemons
+        mode: '0644'
+
+    # Set up systemd service template
+    - name: Create systemd service template
+      copy:
+        content: |
+          [Unit]
+          Description={{PROJECT_DESCRIPTION}}
+          After=network.target
+          
+          [Service]
+          Type=simple
+          User={{PROJECT_NAME}}
+          Group={{PROJECT_NAME}}
+          ExecStart=/usr/local/bin/{{PROJECT_NAME}}
+          Restart=always
+          RestartSec=5
+          StandardOutput=journal
+          StandardError=journal
+          SyslogIdentifier={{PROJECT_NAME}}
+          
+          [Install]
+          WantedBy=multi-user.target
+        dest: "{{ config_dir }}/service.template"
+        mode: '0644'
+
+    # Create development helper scripts
+    - name: Create development helper scripts
+      copy:
+        content: |
+          #!/bin/bash
+          # SimpleDaemons Development Helper Scripts
+          
+          # Function to build a specific project
+          build_project() {
+            local project_name="$1"
+            if [ -z "$project_name" ]; then
+              echo "Usage: build_project <project_name>"
+              echo "Available projects:"
+              ls -1 /opt/simple-daemons/
+              return 1
+            fi
+            
+            local project_dir="/opt/simple-daemons/$project_name"
+            if [ ! -d "$project_dir" ]; then
+              echo "Project $project_name not found in $project_dir"
+              return 1
+            fi
+            
+            echo "Building $project_name..."
+            cd "$project_dir"
+            
+            # Create build directory if it doesn't exist
+            if [ ! -d "build" ]; then
+              mkdir build
+            fi
+            
+            cd build
+            cmake ..
+            make -j$(nproc)
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ $project_name built successfully"
+            else
+              echo "❌ $project_name build failed"
+              return 1
+            fi
+          }
+          
+          # Function to test a specific project
+          test_project() {
+            local project_name="$1"
+            if [ -z "$project_name" ]; then
+              echo "Usage: test_project <project_name>"
+              echo "Available projects:"
+              ls -1 /opt/simple-daemons/
+              return 1
+            fi
+            
+            local project_dir="/opt/simple-daemons/$project_name"
+            if [ ! -d "$project_dir" ]; then
+              echo "Project $project_name not found in $project_dir"
+              return 1
+            fi
+            
+            echo "Testing $project_name..."
+            cd "$project_dir"
+            
+            if [ -f "Makefile" ]; then
+              make test
+            elif [ -d "build" ]; then
+              cd build
+              ctest --verbose
+            else
+              echo "No test configuration found for $project_name"
+              return 1
+            fi
+          }
+          
+          # Function to install a specific project
+          install_project() {
+            local project_name="$1"
+            if [ -z "$project_name" ]; then
+              echo "Usage: install_project <project_name>"
+              echo "Available projects:"
+              ls -1 /opt/simple-daemons/
+              return 1
+            fi
+            
+            local project_dir="/opt/simple-daemons/$project_name"
+            if [ ! -d "$project_dir" ]; then
+              echo "Project $project_name not found in $project_dir"
+              return 1
+            fi
+            
+            echo "Installing $project_name..."
+            cd "$project_dir"
+            
+            if [ -f "Makefile" ]; then
+              sudo make install
+            elif [ -d "build" ]; then
+              cd build
+              sudo make install
+            else
+              echo "No install configuration found for $project_name"
+              return 1
+            fi
+          }
+          
+          # Function to show project status
+          project_status() {
+            echo "=== SimpleDaemons Project Status ==="
+            echo ""
+            
+            for project_dir in /opt/simple-daemons/*/; do
+              if [ -d "$project_dir" ]; then
+                project_name=$(basename "$project_dir")
+                echo "Project: $project_name"
+                
+                # Check if binary exists
+                if [ -f "$project_dir/build/$project_name" ]; then
+                  echo "  ✅ Binary: Found"
+                else
+                  echo "  ❌ Binary: Not found"
+                fi
+                
+                # Check if service is installed
+                if systemctl list-unit-files | grep -q "$project_name.service"; then
+                  echo "  ✅ Service: Installed"
+                  systemctl is-active "$project_name.service" > /dev/null 2>&1
+                  if [ $? -eq 0 ]; then
+                    echo "  ✅ Status: Running"
+                  else
+                    echo "  ⚠️  Status: Stopped"
+                  fi
+                else
+                  echo "  ❌ Service: Not installed"
+                fi
+                
+                echo ""
+              fi
+            done
+          }
+          
+          # Export functions
+          export -f build_project
+          export -f test_project
+          export -f install_project
+          export -f project_status
+        dest: "{{ dev_home }}/.local/bin/sd-helpers"
+        owner: "{{ dev_user }}"
+        group: "{{ dev_group }}"
+        mode: '0755'
+
+    # Create welcome message
+    - name: Create welcome message
+      copy:
+        content: |
+          # SimpleDaemons Development Environment
+          
+          Welcome to the SimpleDaemons development environment!
+          
+          ## Quick Start
+          
+          ### Available Projects
+          {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+          
+          ### Development Commands
+          - `sd-project <name>` - Switch to a project
+          - `build_project <name>` - Build a specific project
+          - `test_project <name>` - Test a specific project
+          - `install_project <name>` - Install a specific project
+          - `project_status` - Show status of all projects
+          
+          ### Project Directories
+          - Projects: /opt/simple-daemons/
+          - Configs: /etc/simple-daemons/
+          - Logs: /var/log/simple-daemons/
+          
+          ### Build System
+          Each project uses CMake and Make for building:
+          ```bash
+          cd /opt/simple-daemons/<project>
+          mkdir build && cd build
+          cmake ..
+          make
+          ```
+          
+          ### Service Management
+          ```bash
+          sudo systemctl start <project>
+          sudo systemctl status <project>
+          sudo systemctl stop <project>
+          ```
+          
+          Happy coding! 🚀
+        dest: "{{ dev_home }}/WELCOME.md"
+        owner: "{{ dev_user }}"
+        group: "{{ dev_group }}"
+        mode: '0644'
+
+    # Final status message
+    - name: Display setup completion message
+      debug:
+        msg: |
+          ✅ SimpleDaemons development environment setup complete!
+          
+          VM Information:
+          - Hostname: {{ ansible_facts['hostname'] }}
+          - OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+          - User: {{ dev_user }}
+          - Projects: /opt/simple-daemons/
+          
+          Next steps:
+          1. Switch to development user: su - {{ dev_user }}
+          2. Check project status: project_status
+          3. Build a project: build_project <project_name>
+          4. Read welcome: cat ~/WELCOME.md
+

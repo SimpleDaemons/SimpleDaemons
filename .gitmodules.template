@@ -1,0 +1,58 @@
+# SimpleDaemons Submodules Configuration
+# This file defines the git submodules for all SimpleDaemons projects
+
+[submodule "projects/simple-dhcpd"]
+	path = projects/simple-dhcpd
+	url = https://github.com/simpledaemons/simple-dhcpd.git
+
+[submodule "projects/simple-dnsd"]
+	path = projects/simple-dnsd
+	url = https://github.com/simpledaemons/simple-dnsd.git
+
+[submodule "projects/simple-dummy"]
+	path = projects/simple-dummy
+	url = https://github.com/simpledaemons/simple-dummy.git
+
+[submodule "projects/simple-httpd"]
+	path = projects/simple-httpd
+	url = https://github.com/simpledaemons/simple-httpd.git
+
+[submodule "projects/simple-nfsd"]
+	path = projects/simple-nfsd
+	url = https://github.com/simpledaemons/simple-nfsd.git
+
+[submodule "projects/simple-ntpd"]
+	path = projects/simple-ntpd
+	url = https://github.com/simpledaemons/simple-ntpd.git
+
+[submodule "projects/simple-proxyd"]
+	path = projects/simple-proxyd
+	url = https://github.com/simpledaemons/simple-proxyd.git
+
+[submodule "projects/simple-rsyncd"]
+	path = projects/simple-rsyncd
+	url = https://github.com/simpledaemons/simple-rsyncd.git
+
+[submodule "projects/simple-sftpd"]
+	path = projects/simple-sftpd
+	url = https://github.com/simpledaemons/simple-sftpd.git
+
+[submodule "projects/simple-smbd"]
+	path = projects/simple-smbd
+	url = https://github.com/simpledaemons/simple-smbd.git
+
+[submodule "projects/simple-smtpd"]
+	path = projects/simple-smtpd
+	url = https://github.com/simpledaemons/simple-smtpd.git
+
+[submodule "projects/simple-snmpd"]
+	path = projects/simple-snmpd
+	url = https://github.com/simpledaemons/simple-snmpd.git
+
+[submodule "projects/simple-tftpd"]
+	path = projects/simple-tftpd
+	url = https://github.com/simpledaemons/simple-tftpd.git
+
+[submodule "projects/simple-utcd"]
+	path = projects/simple-utcd
+	url = https://github.com/simpledaemons/simple-utcd.git
