@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  simple-dummy:
+    image: simple-dummy:latest
+    container_name: simple-dummy
+    ports:
+      - "67:67/tcp"
+    volumes:
+      - ./config:/etc/simple-dummy:ro
+      - ./data:/var/lib/simple-dummy
+      - ./logs:/var/log/simple-dummy
+    environment:
+      - SIMPLE-DUMMY_CONFIG=/etc/simple-dummy/simple-dummy.conf
+      - SIMPLE-DUMMY_LOG_LEVEL=info
+      - SIMPLE-DUMMY_BIND_ADDRESS=0.0.0.0
+      - SIMPLE-DUMMY_BIND_PORT=67
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "67"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - simple-dummy-network
+
+networks:
+  simple-dummy-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16

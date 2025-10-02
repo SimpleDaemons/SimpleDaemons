@@ -1,0 +1,14 @@
+/var/log/simple-dummy/*.log {
+    daily
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 644 _simple-dummy _simple-dummy
+    postrotate
+        /bin/systemctl reload simple-dummy > /dev/null 2>&1 || true
+    endscript
+    sharedscripts
+    su _simple-dummy _simple-dummy
+}

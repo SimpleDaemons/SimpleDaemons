@@ -1,0 +1,17 @@
+[Unit]
+Description=A test application for demonstrating the standardized build system and static binary creation capabilities
+After=network.target
+
+[Service]
+Type=simple
+User=simple-dummy
+Group=simple-dummy
+ExecStart=/usr/local/bin/simple-dummy
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=simple-dummy
+
+[Install]
+WantedBy=multi-user.target

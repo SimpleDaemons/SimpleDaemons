@@ -47,6 +47,7 @@ All documentation is now organized in the `docs/` directory:
 ### Documentation Index
 - **[docs/README](docs/README.md)** - Complete documentation index and navigation
 - **[docs/Submodule Guide](docs/SUBMODULE_GUIDE.md)** - Working with git submodules
+- **[docs/Repository Structure](docs/REPOSITORY_STRUCTURE.md)** - Fork relationships and workflows
 
 ### Project-Specific Documentation
 Each project has its own detailed documentation:

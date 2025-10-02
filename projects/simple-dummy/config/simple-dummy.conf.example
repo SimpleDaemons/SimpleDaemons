@@ -1,0 +1,20 @@
+# Simple Dummy Application Configuration
+# This is a test application for build system standardization
+
+# Application settings
+app_name = "Simple Dummy"
+app_version = "0.1.0"
+log_level = "info"
+
+# Daemon settings
+daemon_mode = false
+pid_file = "/var/run/simple-dummy.pid"
+
+# Worker settings
+worker_interval = 2
+max_iterations = 100
+
+# Logging
+log_file = "/var/log/simple-dummy.log"
+log_rotate = true
+log_max_size = "10MB"

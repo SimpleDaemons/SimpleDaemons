@@ -1,0 +1,73 @@
+# SimpleDaemons Submodules Configuration
+# Using blburns forks for development and customization
+# Upstream: https://github.com/SimpleDaemons/
+
+[submodule "projects/simple-dhcpd"]
+	path = projects/simple-dhcpd
+	url = https://github.com/blburns/simple-dhcpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-dhcpd.git
+
+[submodule "projects/simple-dnsd"]
+	path = projects/simple-dnsd
+	url = https://github.com/blburns/simple-dnsd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-dnsd.git
+
+[submodule "projects/simple-dummy"]
+	path = projects/simple-dummy
+	url = https://github.com/blburns/simple-dummy.git
+	# Upstream: https://github.com/SimpleDaemons/simple-dummy.git
+
+[submodule "projects/simple-httpd"]
+	path = projects/simple-httpd
+	url = https://github.com/blburns/simple-httpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-httpd.git
+
+[submodule "projects/simple-nfsd"]
+	path = projects/simple-nfsd
+	url = https://github.com/blburns/simple-nfsd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-nfsd.git
+
+[submodule "projects/simple-ntpd"]
+	path = projects/simple-ntpd
+	url = https://github.com/blburns/simple-ntpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-ntpd.git
+
+[submodule "projects/simple-proxyd"]
+	path = projects/simple-proxyd
+	url = https://github.com/blburns/simple-proxyd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-proxyd.git
+
+[submodule "projects/simple-rsyncd"]
+	path = projects/simple-rsyncd
+	url = https://github.com/blburns/simple-rsyncd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-rsyncd.git
+
+[submodule "projects/simple-sftpd"]
+	path = projects/simple-sftpd
+	url = https://github.com/blburns/simple-sftpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-sftpd.git
+
+[submodule "projects/simple-smbd"]
+	path = projects/simple-smbd
+	url = https://github.com/blburns/simple-smbd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-smbd.git
+
+[submodule "projects/simple-smtpd"]
+	path = projects/simple-smtpd
+	url = https://github.com/blburns/simple-smtpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-smtpd.git
+
+[submodule "projects/simple-snmpd"]
+	path = projects/simple-snmpd
+	url = https://github.com/blburns/simple-snmpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-snmpd.git
+
+[submodule "projects/simple-tftpd"]
+	path = projects/simple-tftpd
+	url = https://github.com/blburns/simple-tftpd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-tftpd.git
+
+[submodule "projects/simple-utcd"]
+	path = projects/simple-utcd
+	url = https://github.com/blburns/simple-utcd.git
+	# Upstream: https://github.com/SimpleDaemons/simple-utcd.git
