@@ -1,0 +1,245 @@
+# Travis CI configuration for SimpleDaemons
+# SimpleDaemons - A collection of lightweight and secure daemon implementations
+# Copyright 2024 SimpleDaemons
+
+# Language and version
+language: cpp
+compiler:
+  - gcc
+  - clang
+
+# Operating systems
+os:
+  - linux
+  - osx
+
+# Build matrix for different configurations
+matrix:
+  include:
+    # Linux GCC
+    - os: linux
+      compiler: gcc
+      dist: focal
+      env: BUILD_TYPE=Release PROJECTS=core
+    - os: linux
+      compiler: gcc
+      dist: focal
+      env: BUILD_TYPE=Debug PROJECTS=core
+    - os: linux
+      compiler: gcc
+      dist: focal
+      env: BUILD_TYPE=Release PROJECTS=network
+    - os: linux
+      compiler: gcc
+      dist: focal
+      env: BUILD_TYPE=Release PROJECTS=storage
+    - os: linux
+      compiler: gcc
+      dist: focal
+      env: BUILD_TYPE=Release PROJECTS=security
+    # Linux Clang
+    - os: linux
+      compiler: clang
+      dist: focal
+      env: BUILD_TYPE=Release PROJECTS=core
+    - os: linux
+      compiler: clang
+      dist: focal
+      env: BUILD_TYPE=Debug PROJECTS=core
+    # macOS
+    - os: osx
+      osx_image: xcode12.3
+      env: BUILD_TYPE=Release PROJECTS=core
+    - os: osx
+      osx_image: xcode12.3
+      env: BUILD_TYPE=Debug PROJECTS=core
+
+# Cache dependencies
+cache:
+  - apt
+  - ccache
+  - directories:
+    - $HOME/.ccache
+    - $HOME/.cache/pip
+    - $HOME/.cache/conan
+
+# Before install dependencies
+before_install:
+  # Update package lists
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      sudo apt-get update -qq
+    fi
+
+# Install dependencies
+install:
+  # Linux dependencies
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      sudo apt-get install -y -qq build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+      sudo apt-get install -y -qq clang-format cppcheck python3-pip valgrind
+      sudo apt-get install -y -qq doxygen graphviz
+      pip3 install --user bandit semgrep safety
+    fi
+  # macOS dependencies
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew update
+      brew install cmake openssl jsoncpp clang-format cppcheck doxygen graphviz
+      pip3 install --user bandit semgrep safety
+    fi
+
+# Before script
+before_script:
+  # Set up environment
+  - export CCACHE_COMPRESS=1
+  - export CCACHE_DIR=$HOME/.ccache
+  - export CCACHE_MAXSIZE=200M
+  - mkdir -p build
+
+# Script to run
+script:
+  # Build projects based on PROJECTS environment variable
+  - |
+    case "$PROJECTS" in
+      "core")
+        build_projects "simple-ntpd simple-httpd simple-proxyd simple-dhcpd simple-dnsd"
+        ;;
+      "network")
+        build_projects "simple-smtpd simple-tftpd simple-snmpd"
+        ;;
+      "storage")
+        build_projects "simple-nfsd simple-rsyncd simple-sftpd simple-smbd"
+        ;;
+      "security")
+        build_projects "simple-utcd simple-dummy"
+        ;;
+      "all")
+        build_projects "simple-ntpd simple-httpd simple-proxyd simple-dhcpd simple-dnsd simple-smtpd simple-tftpd simple-snmpd simple-nfsd simple-rsyncd simple-sftpd simple-smbd simple-utcd simple-dummy"
+        ;;
+      *)
+        echo "Unknown PROJECTS value: $PROJECTS"
+        exit 1
+        ;;
+    esac
+
+# After script
+after_script:
+  # Show build artifacts
+  - find . -name "*.deb" -o -name "*.rpm" -o -name "*.dmg" -o -name "*.msi" | head -10
+  - ls -la build/ || true
+
+# Notifications
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+  webhooks:
+    urls:
+      - https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+    on_success: change
+    on_failure: always
+
+# Branches to build
+branches:
+  only:
+    - main
+    - master
+    - develop
+    - /^v\d+\.\d+.*$/
+
+# Environment variables
+env:
+  global:
+    - CCACHE_COMPRESS=1
+    - CCACHE_DIR=$HOME/.ccache
+    - CCACHE_MAXSIZE=200M
+    - BUILD_TYPE=Release
+
+# Addons
+addons:
+  apt:
+    packages:
+      - build-essential
+      - cmake
+      - libssl-dev
+      - libjsoncpp-dev
+      - pkg-config
+      - clang-format
+      - cppcheck
+      - python3-pip
+      - valgrind
+      - doxygen
+      - graphviz
+  homebrew:
+    packages:
+      - cmake
+      - openssl
+      - jsoncpp
+      - clang-format
+      - cppcheck
+      - doxygen
+      - graphviz
+
+# Services
+services:
+  - docker
+
+# Deploy configuration (example for GitHub releases)
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  file_glob: true
+  file: dist/*
+  skip_cleanup: true
+  on:
+    tags: true
+    condition: $BUILD_TYPE = Release
+
+# Helper function to build projects
+before_script:
+  - |
+    build_projects() {
+      local projects="$1"
+      echo "Building projects: $projects"
+      
+      for project in $projects; do
+        echo "Building $project..."
+        cd "projects/$project"
+        
+        # Create build directory
+        mkdir -p build
+        cd build
+        
+        # Configure CMake
+        if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+          cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=$CXX
+        else
+          cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        fi
+        
+        # Build
+        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+        
+        # Test
+        make test || true
+        
+        # Code formatting check
+        make check-style || true
+        
+        # Static analysis
+        make lint || true
+        
+        # Security scan
+        make security-scan || true
+        
+        # Generate documentation
+        make docs || true
+        
+        # Create packages
+        make package || true
+        
+        # Return to root
+        cd ../../..
+      done
+    }

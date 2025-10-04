@@ -1,0 +1,366 @@
+# GitHub Actions CI/CD workflow for SimpleDaemons
+# SimpleDaemons - A collection of lightweight and secure daemon implementations
+# Copyright 2024 SimpleDaemons
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  BUILD_TYPE: Release
+  CCACHE_COMPRESS: 1
+  CCACHE_MAXSIZE: 200M
+
+jobs:
+  # Core projects build and test
+  core-projects:
+    name: Core Projects (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-2019, windows-2022]
+        include:
+          - os: ubuntu-20.04
+            cc: gcc
+            cxx: g++
+          - os: ubuntu-22.04
+            cc: gcc
+            cxx: g++
+          - os: macos-11
+            cc: clang
+            cxx: clang++
+          - os: macos-12
+            cc: clang
+            cxx: clang++
+          - os: windows-2019
+            cc: cl
+            cxx: cl
+          - os: windows-2022
+            cc: cl
+            cxx: cl
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Set up environment
+      run: |
+        echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+        echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/pip
+          ~/.cache/conan
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
+    
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+        sudo apt-get install -y -qq clang-format cppcheck python3-pip valgrind
+        sudo apt-get install -y -qq doxygen graphviz
+        pip3 install --user bandit semgrep safety
+    
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        brew install cmake openssl jsoncpp clang-format cppcheck doxygen graphviz
+        pip3 install --user bandit semgrep safety
+    
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        # Install vcpkg and dependencies
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.bat
+        ./vcpkg install openssl jsoncpp
+        cd ..
+    
+    - name: Build core projects
+      run: |
+        chmod +x scripts/build-projects.sh
+        ./scripts/build-projects.sh core
+    
+    - name: Test core projects
+      run: |
+        chmod +x scripts/test-projects.sh
+        ./scripts/test-projects.sh core
+    
+    - name: Code style check
+      run: |
+        chmod +x scripts/check-style.sh
+        ./scripts/check-style.sh core
+    
+    - name: Static analysis
+      run: |
+        chmod +x scripts/static-analysis.sh
+        ./scripts/static-analysis.sh core
+    
+    - name: Security scan
+      run: |
+        chmod +x scripts/security-scan.sh
+        ./scripts/security-scan.sh core
+    
+    - name: Generate documentation
+      run: |
+        chmod +x scripts/generate-docs.sh
+        ./scripts/generate-docs.sh core
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-core-${{ matrix.os }}
+        path: |
+          **/test-results.xml
+          **/coverage.xml
+        retention-days: 30
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-artifacts-core-${{ matrix.os }}
+        path: |
+          **/build/
+          **/dist/
+        retention-days: 7
+
+  # Network projects build and test
+  network-projects:
+    name: Network Projects (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/pip
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
+    
+    - name: Install dependencies
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+          sudo apt-get install -y -qq clang-format cppcheck python3-pip
+          pip3 install --user bandit semgrep safety
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew update
+          brew install cmake openssl jsoncpp clang-format cppcheck
+          pip3 install --user bandit semgrep safety
+        fi
+    
+    - name: Build network projects
+      run: |
+        chmod +x scripts/build-projects.sh
+        ./scripts/build-projects.sh network
+    
+    - name: Test network projects
+      run: |
+        chmod +x scripts/test-projects.sh
+        ./scripts/test-projects.sh network
+
+  # Storage projects build and test
+  storage-projects:
+    name: Storage Projects (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/pip
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
+    
+    - name: Install dependencies
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+          sudo apt-get install -y -qq clang-format cppcheck python3-pip
+          pip3 install --user bandit semgrep safety
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew update
+          brew install cmake openssl jsoncpp clang-format cppcheck
+          pip3 install --user bandit semgrep safety
+        fi
+    
+    - name: Build storage projects
+      run: |
+        chmod +x scripts/build-projects.sh
+        ./scripts/build-projects.sh storage
+    
+    - name: Test storage projects
+      run: |
+        chmod +x scripts/test-projects.sh
+        ./scripts/test-projects.sh storage
+
+  # Security projects build and test
+  security-projects:
+    name: Security Projects (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/pip
+        key: ${{ runner.os }}-deps-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-deps-
+    
+    - name: Install dependencies
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential cmake libssl-dev libjsoncpp-dev pkg-config
+          sudo apt-get install -y -qq clang-format cppcheck python3-pip
+          pip3 install --user bandit semgrep safety
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew update
+          brew install cmake openssl jsoncpp clang-format cppcheck
+          pip3 install --user bandit semgrep safety
+        fi
+    
+    - name: Build security projects
+      run: |
+        chmod +x scripts/build-projects.sh
+        ./scripts/build-projects.sh security
+    
+    - name: Test security projects
+      run: |
+        chmod +x scripts/test-projects.sh
+        ./scripts/test-projects.sh security
+
+  # Docker builds
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [core-projects, network-projects, storage-projects, security-projects]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push Docker images
+      run: |
+        chmod +x scripts/docker-build.sh
+        ./scripts/docker-build.sh
+
+  # Package creation
+  package:
+    name: Create Packages
+    runs-on: ${{ matrix.os }}
+    needs: [core-projects, network-projects, storage-projects, security-projects]
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-11, windows-2019]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Create packages
+      run: |
+        chmod +x scripts/create-packages.sh
+        ./scripts/create-packages.sh
+    
+    - name: Upload packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: packages-${{ matrix.os }}
+        path: dist/
+        retention-days: 30
+
+  # Release
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [package, docker-build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Download all packages
+      uses: actions/download-artifact@v3
+      with:
+        path: packages/
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: packages/**/*
+        generate_release_notes: true
+        draft: false
+        prerelease: false
