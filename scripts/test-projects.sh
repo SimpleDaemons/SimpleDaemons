@@ -41,25 +41,25 @@ log_error() {
 test_project() {
     local project=$1
     local project_dir="projects/$project"
-    
+
     if [ ! -d "$project_dir" ]; then
         log_error "Project directory not found: $project_dir"
         return 1
     fi
-    
+
     log_info "Testing $project..."
-    
+
     cd "$project_dir"
-    
+
     # Check if build directory exists
     if [ ! -d "build" ]; then
         log_warning "Build directory not found for $project, skipping tests"
         cd ../..
         return 0
     fi
-    
+
     cd build
-    
+
     # Run tests
     log_info "Running tests for $project..."
     if make test; then
@@ -68,7 +68,7 @@ test_project() {
         log_warning "Some tests failed for $project"
         # Don't fail the entire build for test failures
     fi
-    
+
     # Return to root directory
     cd ../../..
 }
@@ -77,7 +77,7 @@ test_project() {
 test_category() {
     local category=$1
     local projects=""
-    
+
     case "$category" in
         "core")
             projects=$CORE_PROJECTS
@@ -99,12 +99,12 @@ test_category() {
             return 1
             ;;
     esac
-    
+
     log_info "Testing $category projects: $projects"
-    
+
     local failed_projects=()
     local successful_projects=()
-    
+
     for project in $projects; do
         if test_project "$project"; then
             successful_projects+=("$project")
@@ -112,7 +112,7 @@ test_category() {
             failed_projects+=("$project")
         fi
     done
-    
+
     # Summary
     log_info "Test summary for $category projects:"
     log_success "Successful: ${#successful_projects[@]} projects"
@@ -126,16 +126,16 @@ test_category() {
 main() {
     log_info "Starting test process..."
     log_info "Projects: $PROJECTS"
-    
+
     # Check if we're in the right directory
     if [ ! -d "projects" ]; then
         log_error "This script must be run from the SimpleDaemons root directory"
         exit 1
     fi
-    
+
     # Test projects
     test_category "$PROJECTS"
-    
+
     log_success "Test process completed!"
 }
 

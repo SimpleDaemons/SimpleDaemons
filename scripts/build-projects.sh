@@ -42,39 +42,39 @@ log_error() {
 build_project() {
     local project=$1
     local project_dir="projects/$project"
-    
+
     if [ ! -d "$project_dir" ]; then
         log_error "Project directory not found: $project_dir"
         return 1
     fi
-    
+
     log_info "Building $project..."
-    
+
     cd "$project_dir"
-    
+
     # Create build directory
     mkdir -p build
     cd build
-    
+
     # Configure CMake
     log_info "Configuring $project with CMake..."
     cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
              -DCMAKE_CXX_COMPILER="$CXX" \
              -DCMAKE_C_COMPILER="$CC"
-    
+
     # Build
     log_info "Building $project..."
     make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-    
+
     # Create packages if requested
     if [ "$CREATE_PACKAGES" = "true" ]; then
         log_info "Creating packages for $project..."
         make package || log_warning "Package creation failed for $project"
     fi
-    
+
     # Return to root directory
     cd ../../..
-    
+
     log_success "Successfully built $project"
 }
 
@@ -82,7 +82,7 @@ build_project() {
 build_category() {
     local category=$1
     local projects=""
-    
+
     case "$category" in
         "core")
             projects=$CORE_PROJECTS
@@ -104,12 +104,12 @@ build_category() {
             return 1
             ;;
     esac
-    
+
     log_info "Building $category projects: $projects"
-    
+
     local failed_projects=()
     local successful_projects=()
-    
+
     for project in $projects; do
         if build_project "$project"; then
             successful_projects+=("$project")
@@ -117,7 +117,7 @@ build_category() {
             failed_projects+=("$project")
         fi
     done
-    
+
     # Summary
     log_info "Build summary for $category projects:"
     log_success "Successful: ${#successful_projects[@]} projects"
@@ -135,13 +135,13 @@ main() {
     log_info "Projects: $PROJECTS"
     log_info "CC: $CC"
     log_info "CXX: $CXX"
-    
+
     # Check if we're in the right directory
     if [ ! -d "projects" ]; then
         log_error "This script must be run from the SimpleDaemons root directory"
         exit 1
     fi
-    
+
     # Build projects
     if build_category "$PROJECTS"; then
         log_success "All projects built successfully!"

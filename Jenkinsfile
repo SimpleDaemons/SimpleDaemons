@@ -5,7 +5,7 @@
 
 pipeline {
     agent any
-    
+
     parameters {
         choice(
             name: 'BUILD_TYPE',
@@ -48,7 +48,7 @@ pipeline {
             description: 'Update standardization templates'
         )
     }
-    
+
     environment {
         PROJECT_NAME = 'SimpleDaemons'
         VERSION = '${env.BUILD_NUMBER}'
@@ -61,7 +61,7 @@ pipeline {
         STORAGE_PROJECTS = 'simple-nfsd,simple-rsyncd,simple-sftpd,simple-smbd'
         SECURITY_PROJECTS = 'simple-utcd,simple-dummy'
     }
-    
+
     options {
         timeout(time: 120, unit: 'MINUTES')
         timestamps()
@@ -69,7 +69,7 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
         skipDefaultCheckout()
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -86,7 +86,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Setup') {
             parallel {
                 stage('Linux Setup') {
@@ -106,7 +106,7 @@ pipeline {
                         '''
                     }
                 }
-                
+
                 stage('macOS Setup') {
                     when {
                         anyOf {
@@ -122,7 +122,7 @@ pipeline {
                         '''
                     }
                 }
-                
+
                 stage('Windows Setup') {
                     when {
                         anyOf {
@@ -139,7 +139,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Template Update') {
             when {
                 expression { params.UPDATE_TEMPLATES == true }
@@ -152,7 +152,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Build Core Projects') {
             when {
                 anyOf {
@@ -188,7 +188,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Network Projects') {
             when {
                 anyOf {
@@ -214,7 +214,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Storage Projects') {
             when {
                 anyOf {
@@ -245,7 +245,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Security Projects') {
             when {
                 anyOf {
@@ -266,7 +266,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Test') {
             when {
                 expression { params.RUN_TESTS == true }
@@ -318,7 +318,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Analysis') {
             when {
                 expression { params.RUN_ANALYSIS == true }
@@ -339,7 +339,7 @@ pipeline {
                         '''
                     }
                 }
-                
+
                 stage('Static Analysis') {
                     steps {
                         sh '''
@@ -355,7 +355,7 @@ pipeline {
                         '''
                     }
                 }
-                
+
                 stage('Security Scan') {
                     steps {
                         sh '''
@@ -371,7 +371,7 @@ pipeline {
                         '''
                     }
                 }
-                
+
                 stage('Documentation') {
                     steps {
                         sh '''
@@ -389,7 +389,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Package') {
             when {
                 expression { params.CREATE_PACKAGES == true }
@@ -405,14 +405,14 @@ pipeline {
                             cd - > /dev/null
                         fi
                     done
-                    
+
                     # Create consolidated package
                     mkdir -p ${DIST_DIR}
                     tar -czf ${DIST_DIR}/SimpleDaemons-${VERSION}.tar.gz projects/
                 '''
             }
         }
-        
+
         stage('Docker') {
             steps {
                 script {
@@ -420,7 +420,7 @@ pipeline {
                         script: 'find projects/ -name "Dockerfile" -type f',
                         returnStdout: true
                     ).trim().split('\n')
-                    
+
                     for (dockerfile in dockerfiles) {
                         if (dockerfile) {
                             def projectName = dockerfile.split('/')[1]
@@ -434,7 +434,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Deploy') {
             when {
                 expression { params.DEPLOY == true }
@@ -447,7 +447,7 @@ pipeline {
                         # Add your deployment logic here
                         # e.g., upload to Nexus, Artifactory, etc.
                     '''
-                    
+
                     // Deploy Docker images
                     sh '''
                         for project in projects/*/; do
@@ -461,20 +461,20 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             // Archive artifacts
             archiveArtifacts artifacts: 'dist/**', allowEmptyArchive: true
             archiveArtifacts artifacts: 'build/**', allowEmptyArchive: true
-            
+
             // Publish test results
             publishTestResults testResultsPattern: '**/test-results.xml'
-            
+
             // Clean up
             cleanWs()
         }
-        
+
         success {
             echo 'Build succeeded!'
             // Send success notification
@@ -484,7 +484,7 @@ pipeline {
                 to: "${env.CHANGE_AUTHOR_EMAIL}"
             )
         }
-        
+
         failure {
             echo 'Build failed!'
             // Send failure notification
@@ -494,7 +494,7 @@ pipeline {
                 to: "${env.CHANGE_AUTHOR_EMAIL}"
             )
         }
-        
+
         unstable {
             echo 'Build unstable!'
         }
@@ -506,17 +506,17 @@ def buildProject(projectName) {
     sh """
         echo "Building ${projectName}..."
         cd projects/${projectName}
-        
+
         # Create build directory
         mkdir -p ${BUILD_DIR}
         cd ${BUILD_DIR}
-        
+
         # Configure CMake
         cmake .. -DCMAKE_BUILD_TYPE=${params.BUILD_TYPE}
-        
+
         # Build
         make -j\$(nproc 2>/dev/null || sysctl -n hw.ncpu)
-        
+
         # Create packages if requested
         if [ "${params.CREATE_PACKAGES}" == "true" ]; then
             make package
@@ -541,7 +541,7 @@ def testProjects(category) {
             projects = env.SECURITY_PROJECTS.split(',')
             break
     }
-    
+
     for (project in projects) {
         sh """
             echo "Testing ${project}..."

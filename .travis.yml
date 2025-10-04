@@ -202,43 +202,43 @@ before_script:
     build_projects() {
       local projects="$1"
       echo "Building projects: $projects"
-      
+
       for project in $projects; do
         echo "Building $project..."
         cd "projects/$project"
-        
+
         # Create build directory
         mkdir -p build
         cd build
-        
+
         # Configure CMake
         if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
           cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=$CXX
         else
           cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
         fi
-        
+
         # Build
         make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
-        
+
         # Test
         make test || true
-        
+
         # Code formatting check
         make check-style || true
-        
+
         # Static analysis
         make lint || true
-        
+
         # Security scan
         make security-scan || true
-        
+
         # Generate documentation
         make docs || true
-        
+
         # Create packages
         make package || true
-        
+
         # Return to root
         cd ../../..
       done

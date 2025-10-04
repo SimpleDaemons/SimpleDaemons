@@ -41,16 +41,16 @@ log_error() {
 check_style_project() {
     local project=$1
     local project_dir="projects/$project"
-    
+
     if [ ! -d "$project_dir" ]; then
         log_error "Project directory not found: $project_dir"
         return 1
     fi
-    
+
     log_info "Checking code style for $project..."
-    
+
     cd "$project_dir"
-    
+
     # Check if Makefile exists and has check-style target
     if [ -f "Makefile" ] && grep -q "check-style" Makefile; then
         log_info "Running make check-style for $project..."
@@ -63,7 +63,7 @@ check_style_project() {
         # Fallback to clang-format if no Makefile target
         log_info "Running clang-format check for $project..."
         local style_errors=0
-        
+
         # Find C/C++ source files
         find src include -name "*.cpp" -o -name "*.hpp" -o -name "*.c" -o -name "*.h" | while read -r file; do
             if [ -f "$file" ]; then
@@ -73,14 +73,14 @@ check_style_project() {
                 fi
             fi
         done
-        
+
         if [ $style_errors -eq 0 ]; then
             log_success "Code style check passed for $project"
         else
             log_warning "Code style check found $style_errors issues in $project"
         fi
     fi
-    
+
     # Return to root directory
     cd ../..
 }
@@ -89,7 +89,7 @@ check_style_project() {
 check_style_category() {
     local category=$1
     local projects=""
-    
+
     case "$category" in
         "core")
             projects=$CORE_PROJECTS
@@ -111,12 +111,12 @@ check_style_category() {
             return 1
             ;;
     esac
-    
+
     log_info "Checking code style for $category projects: $projects"
-    
+
     local failed_projects=()
     local successful_projects=()
-    
+
     for project in $projects; do
         if check_style_project "$project"; then
             successful_projects+=("$project")
@@ -124,7 +124,7 @@ check_style_category() {
             failed_projects+=("$project")
         fi
     done
-    
+
     # Summary
     log_info "Code style check summary for $category projects:"
     log_success "Successful: ${#successful_projects[@]} projects"
@@ -138,21 +138,21 @@ check_style_category() {
 main() {
     log_info "Starting code style check process..."
     log_info "Projects: $PROJECTS"
-    
+
     # Check if we're in the right directory
     if [ ! -d "projects" ]; then
         log_error "This script must be run from the SimpleDaemons root directory"
         exit 1
     fi
-    
+
     # Check if clang-format is available
     if ! command -v clang-format >/dev/null 2>&1; then
         log_warning "clang-format not found, some style checks may be skipped"
     fi
-    
+
     # Check style for projects
     check_style_category "$PROJECTS"
-    
+
     log_success "Code style check process completed!"
 }
 
