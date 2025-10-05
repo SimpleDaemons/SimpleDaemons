@@ -30,6 +30,8 @@ SimpleDaemons/                    # Main repository
 
 SimpleDaemons provides a comprehensive suite of network services implemented in C++ with a focus on simplicity, security, and performance. Each daemon is designed to be lightweight, easy to configure, and suitable for both development and production environments.
 
+For current project statuses and priorities, see the consolidated [Projects Overview](PROJECTS_OVERVIEW.md).
+
 ## 📚 Documentation
 
 All documentation is now organized in the `docs/` directory:
@@ -110,6 +112,8 @@ make install
 ```
 
 ## 🏗️ Projects
+
+For a full, up-to-date list of projects, ports, and statuses, refer to the [Projects Overview](PROJECTS_OVERVIEW.md).
 
 | Project | Description | Port | Status |
 |---------|-------------|------|--------|
@@ -288,7 +292,7 @@ ps aux | grep simple-ntpd
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## 🎯 Roadmap
 
